@@ -18,10 +18,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 import pickle
 import pandas as pd
-import os
-MODEL_PATH = "./model/"
-FEATURES_PATH = "./features/features.csv"
 
+FEATURES_PATH = "./features.csv"
+FILENAME = './LR_model.sav'
 
 def read_features():
     '''
@@ -48,13 +47,10 @@ def LogisticRegression_train(X_train, X_test, y_train, y_test, save_model=True):
     acc = classifier.score(X_test, y_test)
     print("Accuracy of logistic regression classifier: {:.2f}".format(acc))
     if save_model:
-        filename = MODEL_PATH + 'LR_model.sav'
-        pickle.dump(classifier, open(filename, 'wb'))
+        pickle.dump(classifier, open(FILENAME, 'wb'))
         
         
 def main():
-    if not os.path.exists(MODEL_PATH):
-        os.makedirs(MODEL_PATH)
     features = read_features()
     X_train, X_test, y_train, y_test = data_splitting(features)
     LogisticRegression_train(X_train, X_test, y_train, y_test)

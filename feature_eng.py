@@ -105,8 +105,6 @@ def main():
   
     if sys.argv[1] == str(1):
         print("Training...")
-        if not os.path.exists("./features"):
-            os.makedirs("./features")
         #create feature dataframe for disatified dataset
         columns = ['id','num_rep','num_rep_per','len_conversation','total_compound_conv', 'tot_pos_sen', 'tot_neg_sen', 'Is_satisfied']
         
@@ -131,12 +129,13 @@ def main():
                                                'tot_neg_sen':tot_neg_sen, 'Is_satisfied':1})
         new_df = pd.concat([df_rep_dsat,df_rep_sat])
         #df_shuffle = new_df.sample(frac=1).reset_index(drop=True)
-        new_df.to_csv("features/features.csv",index=False)
+        new_df.to_csv("./features.csv",index=False)
         os.system("python train.py")
         
     else:
         print("Predicting...")
         file = sys.argv[2]
+        file_name = file.split('/')[-1].split('.txt')[0]
         id_number,lines = read_file(file)
         num_rep, num_rep_per,len_conversation = number_repetition(lines)
         compound_score, tot_pos_sen, tot_neg_sen = pos_neg_conv(lines)
@@ -145,8 +144,8 @@ def main():
                                                'total_compound_conv':compound_score, 'tot_pos_sen':tot_pos_sen, 
                                                'tot_neg_sen':tot_neg_sen})
         features_df = pd.DataFrame(features_df).transpose()
-        features_df.to_csv("./features/features_predict.csv",index=False)
-        os.system("python predict.py")
+        features_df.to_csv(file_name + ".csv",index=False)
+        os.system("python predict.py " + file_name)
         
 if __name__ == "__main__":
     main()
