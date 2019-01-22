@@ -14,6 +14,10 @@ import nltk
 nltk.download('vader_lexicon')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
+from nltk.tokenize import word_tokenize
+from gensim import models
+from gensim.corpora import Dictionary
+
 text_files_dsat = glob.glob("../conversations/dsat/*.txt")
 text_files_sat = glob.glob("../conversations/sat/*.txt")
 # sentences to delete
@@ -98,8 +102,71 @@ def generatesentiment(sentence):
     ss = sid.polarity_scores(sentence)
     return ss['compound']
 
+def tfidf_vector():
+    #need to read all the files to create dictionary and model
+    text_files = glob.glob("../all/*.txt")
+    all_documents =[]
+    file_idx = []
+    new_list = []
+    for idx,file in enumerate(text_files):
+        id_name = file.split("/")[-1].split(".txt")[0]
+        file_idx.append(id_name)
+        with open (file) as f:
+            new_list = []
+            lines = [line.rstrip('\n') for line in f]
+            #remove first and last sentence in the conversation
+            #remove [SYSTEM] and [USER]
+            lines = lines[1:-1]
+            for line in lines:
+                line = line.replace("[SYSTEM] ","")
+                line = line.replace("[USER]   ","")
+                new_list.append(line)
+        text = ' '.join(new_list)
+        all_documents.append(text)
+    dat = pd.Series(all_documents)
+    # tokenize the words and store in a dictionary
+    dat = dat.apply(lambda x: str(x).lower()) 
+    dat = dat.apply(lambda x: word_tokenize(x))
+    dictionary = Dictionary(dat)
+    #bag of words
+    corpus = [dictionary.doc2bow(doc) for doc in dat]
+    tfidf = models.TfidfModel(corpus)
+    sum_tfidf_list = []
+    avg_tfidf_list = []
+    #calculate the sum and average tfidf score for each conversation
+    for document in tfidf[corpus]:
+        sum_tfidf = sum([pair[1] for pair in document])
+        avg_tfidf = sum([pair[1] for pair in document])/len(document)
+        sum_tfidf_list.append(sum_tfidf)
+        avg_tfidf_list.append(avg_tfidf)
+    tfidf_df = pd.DataFrame(
+    {'id':file_idx,
+     'sum_tfidf': sum_tfidf_list,
+     'avg_tfidf': avg_tfidf_list,
+    })
+    tfidf.save("tfidf.sav")
+    dictionary.save('tfidf.dict')
+    
+    return tfidf_df
 
-
+def tfidf_predict(lines):
+    dict_tfidf = Dictionary.load('tfidf.dict')
+    tfidf = models.TfidfModel.load("tfidf.sav")
+    #remove first and last sentence in the conversation
+    new_list = []
+    lines = lines[1:-1]
+    for line in lines:
+        line = line.replace("[SYSTEM] ","")
+        line = line.replace("[USER]   ","")
+        new_list.append(line)
+    text = ' '.join(new_list)
+    text = text.lower()
+    text = word_tokenize(text)
+    vec_bow = dict_tfidf.doc2bow(text)
+    sum_tfidf = sum([pair[1] for pair in tfidf[vec_bow]])
+    avg_tfidf = sum([pair[1] for pair in tfidf[vec_bow]])/len(tfidf[vec_bow])
+    
+    return sum_tfidf,avg_tfidf
 def main():
   
   
@@ -128,8 +195,11 @@ def main():
                                                'total_compound_conv':compound_score, 'tot_pos_sen':tot_pos_sen, 
                                                'tot_neg_sen':tot_neg_sen, 'Is_satisfied':1})
         new_df = pd.concat([df_rep_dsat,df_rep_sat])
-        #df_shuffle = new_df.sample(frac=1).reset_index(drop=True)
-        new_df.to_csv("./features.csv",index=False)
+        tfidf = tfidf_vector()
+        features = new_df.iloc[:,[0]+[-1]]   
+        tfidf = pd.merge(tfidf, features, on='id')
+        features_tfidf = pd.merge(new_df.iloc[:,0:-1], tfidf, on='id')
+        features_tfidf.to_csv("./features.csv",index=False)
         os.system("python train.py")
         
     else:
@@ -139,10 +209,12 @@ def main():
         id_number,lines = read_file(file)
         num_rep, num_rep_per,len_conversation = number_repetition(lines)
         compound_score, tot_pos_sen, tot_neg_sen = pos_neg_conv(lines)
+        sum_tfidf,avg_tfidf = tfidf_predict(lines)
         features_df = pd.Series({'id':id_number, 'num_rep':num_rep, 'num_rep_per':num_rep_per,
                                           'len_conversation':len_conversation,
                                                'total_compound_conv':compound_score, 'tot_pos_sen':tot_pos_sen, 
-                                               'tot_neg_sen':tot_neg_sen})
+                                               'tot_neg_sen':tot_neg_sen,'sum_tfidf':sum_tfidf,
+                                               'avg_tfidf':avg_tfidf})
         features_df = pd.DataFrame(features_df).transpose()
         features_df.to_csv(file_name + ".csv",index=False)
         os.system("python predict.py " + file_name)
