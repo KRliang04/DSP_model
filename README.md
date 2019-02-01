@@ -6,7 +6,7 @@ This repository is for predicting the user satisfaction of the chatbot.
 We used and adapted open source data -- DSTC 2 which contains a number of dialogs related to restaurant search. You can find it [here](http://camdial.org/~mh521/dstc/)
 
 
-Before running the code please download the google word2vec model and put it in the google model folder [download](https://drive.google.com/uc?id=0B7XkCwpI5KDYNlNUTTlSS21pQmM&export=download)
+Before running the code please download the google word2vec model [download](https://drive.google.com/uc?id=0B7XkCwpI5KDYNlNUTTlSS21pQmM&export=download)
 
 ### Training the model:
 
@@ -14,7 +14,7 @@ Before running the code please download the google word2vec model and put it in 
 
 There are following files will be generated:
 
-* tfidf.dict, tfidf.sav in the tfidf_model folder
+* tfidf.dict, tfidf.sav 
 
 * features.csv 
 
